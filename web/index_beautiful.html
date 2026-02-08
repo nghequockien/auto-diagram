@@ -5,115 +5,7 @@
     <title>Live Diagram Preview (Monaco)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <style>
-      :root {
-        --bg: #0b1220;
-        --panel: #0f172a;
-        --border: #223047;
-        --text: #e5e7eb;
-        --muted: #94a3b8;
-        --bad: #f87171;
-        --good: #34d399;
-      }
-      body {
-        margin: 0;
-        font-family:
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          Segoe UI,
-          Roboto,
-          Arial,
-          sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        height: 100vh;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        padding: 12px;
-        box-sizing: border-box;
-      }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 12px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-      }
-      .toolbar {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-bottom: 10px;
-        flex-wrap: wrap;
-      }
-      button {
-        background: #1f2937;
-        border: 1px solid #334155;
-        color: var(--text);
-        padding: 8px 10px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-      }
-      button:hover {
-        border-color: #64748b;
-      }
-      .hint {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      #editor {
-        flex: 1;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        min-height: 0;
-      }
-      .error {
-        margin-top: 10px;
-        color: var(--bad);
-        font-size: 12px;
-        white-space: pre-wrap;
-      }
-      .status {
-        color: var(--muted);
-        font-size: 12px;
-        margin-bottom: 10px;
-      }
-      .status.ok {
-        color: var(--good);
-      }
-      img {
-        width: 100%;
-        height: calc(100% - 34px);
-        object-fit: contain;
-        background: white;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-      }
-      .title {
-        font-size: 14px;
-        margin: 0 0 8px 0;
-        color: #cbd5e1;
-        font-weight: 700;
-        letter-spacing: 0.2px;
-      }
-
-      @media (max-width: 980px) {
-        body {
-          grid-template-columns: 1fr;
-          height: auto;
-        }
-        img {
-          height: 60vh;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="/static/index_beautiful.css">
 
     <!-- RequireJS (needed to load Monaco from CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
@@ -128,6 +20,7 @@
     <!-- Left: Editor -->
     <div class="panel">
       <div class="toolbar">
+        <button onclick="toggleMinimize(this)" title="Minimize Editor">▼</button>
         <button onclick="renderNow()">Render</button>
         <button onclick="formatJson()">Format JSON</button>
         <button onclick="minifyJson()">Minify</button>
@@ -139,201 +32,21 @@
 
     <!-- Right: Preview -->
     <div class="panel">
-      <p class="title">Preview</p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <p class="title" style="margin: 0;">Preview</p>
+        <div class="zoom-controls">
+          <button onclick="zoomOut()" title="Zoom Out">−</button>
+          <span id="zoomLevel" class="zoom-level">100%</span>
+          <button onclick="zoomIn()" title="Zoom In">+</button>
+          <button onclick="zoomReset()" title="Reset Zoom">Reset</button>
+        </div>
+      </div>
       <div class="status" id="status"></div>
-      <img id="preview" alt="diagram preview" />
+      <div id="previewContainer" class="preview-container">
+        <img id="preview" alt="diagram preview" />
+      </div>
     </div>
 
-    <script>
-      const errorEl = document.getElementById("error");
-      const img = document.getElementById("preview");
-      const statusEl = document.getElementById("status");
-      const editorDiv = document.getElementById("editor");
-
-      let editor;
-      let timer = null;
-      let lastHash = null;
-
-      function setStatus(msg, ok = false) {
-        statusEl.textContent = msg || "";
-        statusEl.className = ok ? "status ok" : "status";
-      }
-
-      function stableHash(str) {
-        // Lightweight hash for change detection
-        let h = 2166136261;
-        for (let i = 0; i < str.length; i++) {
-          h ^= str.charCodeAt(i);
-          h = Math.imul(h, 16777619);
-        }
-        return (h >>> 0).toString(16);
-      }
-
-      function getJsonText() {
-        return editor ? editor.getValue() : "";
-      }
-      function setJsonText(v) {
-        if (editor) editor.setValue(v);
-      }
-
-      function formatJson() {
-        errorEl.textContent = "";
-        try {
-          const obj = JSON.parse(getJsonText());
-          setJsonText(JSON.stringify(obj, null, 2));
-        } catch (e) {
-          errorEl.textContent = "JSON format error:\n" + e.message;
-        }
-      }
-
-      function minifyJson() {
-        errorEl.textContent = "";
-        try {
-          const obj = JSON.parse(getJsonText());
-          setJsonText(JSON.stringify(obj));
-        } catch (e) {
-          errorEl.textContent = "JSON minify error:\n" + e.message;
-        }
-      }
-
-      async function renderNow(force = false) {
-        errorEl.textContent = "";
-        setStatus("Rendering...");
-
-        let payload;
-        let normalized;
-        try {
-          payload = JSON.parse(getJsonText());
-          normalized = JSON.stringify(payload); // normalize to avoid whitespace-only renders
-        } catch (e) {
-          errorEl.textContent = "JSON parse error:\n" + e.message;
-          setStatus("Fix JSON error");
-          return;
-        }
-
-        const h = stableHash(normalized);
-        if (!force && lastHash === h) {
-          setStatus("No change (skipped)", true);
-          return;
-        }
-        lastHash = h;
-
-        try {
-          const res = await fetch("/render", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: normalized,
-          });
-
-          const contentType = res.headers.get("content-type") || "";
-          if (!res.ok) {
-            if (contentType.includes("application/json")) {
-              const j = await res.json();
-              throw new Error(j.error || "HTTP " + res.status);
-            }
-            throw new Error("HTTP " + res.status);
-          }
-
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          img.src = url;
-
-          setStatus("Rendered ✓", true);
-        } catch (e) {
-          errorEl.textContent = "Render error:\n" + e.message;
-          setStatus("Render failed");
-        }
-      }
-
-      function debounceRender() {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => renderNow(false), 600);
-      }
-
-      // Expose functions for toolbar buttons
-      window.renderNow = () => renderNow(true);
-      window.formatJson = formatJson;
-      window.minifyJson = minifyJson;
-
-      // Load Monaco
-      require.config({ paths: { vs: window.MONACO_BASE + "/vs" } });
-      require(["vs/editor/editor.main"], function () {
-        editor = monaco.editor.create(editorDiv, {
-          value: JSON.stringify(
-            {
-              graph: {
-                title: "Live Diagram",
-                direction: "LR",
-                graph_attr: { pad: "0.6", nodesep: "0.5", ranksep: "0.7" },
-                node_attr: { fontsize: "12" },
-                edge_attr: { fontsize: "11" },
-              },
-              defaults: { edge_attributes: { color: "#424242" } },
-              nodes: [
-                {
-                  id: "user",
-                  label: "User",
-                  node_class: "diagrams.generic.user.User",
-                },
-                {
-                  id: "api",
-                  label: "API",
-                  node_class: "diagrams.generic.compute.Server",
-                },
-                {
-                  id: "db",
-                  label: "DB",
-                  node_class: "diagrams.generic.database.SQL",
-                },
-              ],
-              clusters: [
-                {
-                  name: "Application",
-                  graph_attr: {
-                    style: "rounded,filled",
-                    bgcolor: "#E8F5E9",
-                    color: "#43A047",
-                    penwidth: "2",
-                  },
-                  node_ids: ["api"],
-                },
-                {
-                  name: "Data",
-                  graph_attr: {
-                    style: "rounded,filled",
-                    bgcolor: "#FFF3E0",
-                    color: "#FB8C00",
-                    penwidth: "2",
-                  },
-                  node_ids: ["db"],
-                },
-              ],
-              edges: [
-                { from: "user", to: "api", attributes: { label: "HTTPS" } },
-                {
-                  from: "api",
-                  to: "db",
-                  attributes: { label: "SQL", color: "#6D4C41" },
-                },
-              ],
-            },
-            null,
-            2,
-          ),
-          language: "json",
-          theme: "vs-dark",
-          automaticLayout: true,
-          minimap: { enabled: false },
-          fontSize: 13,
-          tabSize: 2,
-          scrollBeyondLastLine: false,
-        });
-
-        editor.onDidChangeModelContent(debounceRender);
-
-        // First render
-        renderNow(true);
-      });
-    </script>
+    <script src="/static/index_beautiful.js"></script>
   </body>
 </html>

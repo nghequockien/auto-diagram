@@ -2,185 +2,51 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Live Diagram Preview</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 18px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
-      .panel {
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 12px;
-      }
-      textarea {
-        width: 100%;
-        height: 70vh;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 12px;
-      }
-      img {
-        max-width: 100%;
-        border: 1px solid #eee;
-        background: #fff;
-      }
-      .error {
-        color: #b00020;
-        white-space: pre-wrap;
-      }
-      .toolbar {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      button {
-        padding: 8px 10px;
-        cursor: pointer;
-      }
-      .hint {
-        color: #666;
-        font-size: 12px;
-      }
-    </style>
+    <title>Live Diagram Preview (Monaco)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="/static/index_beautiful.css">
+
+    <!-- RequireJS (needed to load Monaco from CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <script>
+      // Monaco base path on CDN
+      window.MONACO_BASE =
+        "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min";
+    </script>
   </head>
+
   <body>
+    <!-- Left: Editor -->
     <div class="panel">
       <div class="toolbar">
+        <button onclick="toggleMinimize(this)" title="Minimize Editor">▼</button>
         <button onclick="renderNow()">Render</button>
+        <button onclick="formatJson()">Format JSON</button>
+        <button onclick="minifyJson()">Minify</button>
         <span class="hint">Auto-render after you stop typing (~600ms)</span>
       </div>
-      <textarea id="json"></textarea>
+      <div id="editor"></div>
       <div class="error" id="error"></div>
     </div>
 
+    <!-- Right: Preview -->
     <div class="panel">
-      <h3>Preview</h3>
-      <div id="status" class="hint"></div>
-      <img id="preview" alt="diagram preview" />
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <p class="title" style="margin: 0;">Preview</p>
+        <div class="zoom-controls">
+          <button onclick="zoomOut()" title="Zoom Out">−</button>
+          <span id="zoomLevel" class="zoom-level">100%</span>
+          <button onclick="zoomIn()" title="Zoom In">+</button>
+          <button onclick="zoomReset()" title="Reset Zoom">Reset</button>
+        </div>
+      </div>
+      <div class="status" id="status"></div>
+      <div id="previewContainer" class="preview-container">
+        <img id="preview" alt="diagram preview" />
+      </div>
     </div>
 
-    <script>
-      const textarea = document.getElementById("json");
-      const img = document.getElementById("preview");
-      const errorEl = document.getElementById("error");
-      const statusEl = document.getElementById("status");
-
-      let timer = null;
-
-      function setStatus(msg) {
-        statusEl.textContent = msg || "";
-      }
-
-      async function renderNow() {
-        errorEl.textContent = "";
-        setStatus("Rendering...");
-
-        let payload;
-        try {
-          payload = JSON.parse(textarea.value);
-        } catch (e) {
-          errorEl.textContent = "JSON parse error:\n" + e.message;
-          setStatus("Fix JSON error");
-          return;
-        }
-
-        try {
-          const res = await fetch("/render", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          // If backend returns JSON error
-          const contentType = res.headers.get("content-type") || "";
-          if (!res.ok) {
-            if (contentType.includes("application/json")) {
-              const j = await res.json();
-              throw new Error(j.error || "HTTP " + res.status);
-            } else {
-              throw new Error("HTTP " + res.status);
-            }
-          }
-
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-
-          // Refresh image
-          img.src = url;
-          setStatus("Rendered ✓");
-        } catch (e) {
-          errorEl.textContent = "Render error:\n" + e.message;
-          setStatus("Render failed");
-        }
-      }
-
-      textarea.addEventListener("input", () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(renderNow, 600);
-      });
-
-      // starter JSON
-      textarea.value = JSON.stringify(
-        {
-          graph: { title: "Live Diagram", direction: "LR", outformat: "png" },
-          nodes: [
-            {
-              id: "u",
-              label: "User",
-              node_class: "diagrams.generic.user.User",
-            },
-            {
-              id: "api",
-              label: "API",
-              node_class: "diagrams.generic.compute.Server",
-            },
-            {
-              id: "db",
-              label: "DB",
-              node_class: "diagrams.generic.database.SQL",
-            },
-          ],
-          clusters: [
-            {
-              name: "App",
-              graph_attr: {
-                style: "rounded,filled",
-                bgcolor: "#E8F5E9",
-                color: "#43A047",
-                penwidth: "2",
-              },
-              node_ids: ["api"],
-            },
-            {
-              name: "Data",
-              graph_attr: {
-                style: "rounded,filled",
-                bgcolor: "#FFF3E0",
-                color: "#FB8C00",
-                penwidth: "2",
-              },
-              node_ids: ["db"],
-            },
-          ],
-          edges: [
-            { from: "u", to: "api", attributes: { label: "HTTPS" } },
-            {
-              from: "api",
-              to: "db",
-              attributes: { label: "SQL", color: "#6D4C41" },
-            },
-          ],
-        },
-        null,
-        2,
-      );
-
-      // initial render
-      renderNow();
-    </script>
+    <script src="/static/index_beautiful.js"></script>
   </body>
 </html>

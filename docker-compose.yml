@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  auto-diagram:
+    build: .
+    container_name: auto-diagram
+    ports:
+      - "8000:8000"
+    environment:
+      # Optional: Set log level 
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    # Memory limit (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

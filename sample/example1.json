@@ -30,7 +30,7 @@
   "nodes": [
     {
       "id": "users",
-      "label": "MLU Employees",
+      "label": "Employees",
       "node_class": "diagrams.onprem.client.User"
     },
     {

@@ -26,12 +26,16 @@ def build_node(node_spec: Dict[str, Any], node_registry: Dict[str, Any]):
         return node_registry[nid]
 
     label = node_spec.get("label", nid)
-    NodeCls = load_node_class(node_spec.get("node_class", "diagrams.generic.blank.Blank"))
+    NodeCls = load_node_class(
+        node_spec.get("node_class", "diagrams.generic.blank.Blank")
+    )
     node_registry[nid] = NodeCls(label)
     return node_registry[nid]
 
 
-def merge_dict(base: Dict[str, Any], override: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def merge_dict(
+    base: Dict[str, Any], override: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
     out = dict(base or {})
     if override:
         out.update(override)
@@ -82,6 +86,7 @@ def render_diagram_png(spec: Dict[str, Any]) -> bytes:
 
     title = graph.get("title", "Diagram")
     direction = graph.get("direction", "LR")
+    curvestyle = graph.get("curvestyle", "ortho")
 
     graph_attr = graph.get("graph_attr", {})
     node_attr = graph.get("node_attr", {})
@@ -110,6 +115,7 @@ def render_diagram_png(spec: Dict[str, Any]) -> bytes:
             graph_attr=graph_attr,
             node_attr=node_attr,
             edge_attr=edge_attr,
+            curvestyle=curvestyle,
         ):
             # 1) clusters first (nodes instantiated inside cluster context)
             if clusters_spec:

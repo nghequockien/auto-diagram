@@ -1,12 +1,17 @@
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .diagram_renderer import render_diagram_png
 
 app = FastAPI()
 
-WEB_INDEX = Path(__file__).resolve().parents[1] / "web" / "index.html"
+WEB_DIR = Path(__file__).resolve().parents[1] / "web"
+WEB_INDEX = WEB_DIR / "index.html"
+
+# Mount static files (CSS, JS, etc.)
+app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
 @app.get("/health")

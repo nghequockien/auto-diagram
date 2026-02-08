@@ -1,0 +1,39 @@
+AUTO-DIAGRAM: LIVE INFRASTRUCTURE VISUALIZATION
+================================================
+
+What is Auto-Diagram?
+
+Auto-Diagram is a powerful, web-based application that transforms JSON specifications into beautiful, professional architecture diagrams in real-time. Built with FastAPI and Python's Diagrams library, it enables developers and architects to design, visualize, and refine system architectures without leaving the browser.
+
+Key Features:
+
+• Live Real-Time Preview: See your diagram update instantly as you edit the JSON configuration. The auto-render feature (600ms debounce) ensures smooth, responsive feedback without overwhelming your browser.
+
+• Beautiful Visual Components: Create professional infrastructure diagrams with support for cloud services, databases, servers, and custom nodes. The visual output is publication-ready with clear node labels, relationships, and styling options.
+
+• Intuitive JSON Editor: Built on Monaco Editor (the engine behind VS Code), the editor provides syntax highlighting, error detection, and helpful formatting tools. Users can manually edit configurations or use Format JSON and Minify buttons for quick formatting.
+
+• Color Customization: Hex color codes in your JSON configuration are displayed with actual color swatches directly in the editor. Click any color to open a native color picker and instantly update your diagram's appearance.
+
+• Zoom & Pan Controls: Dynamic zoom controls (±10%, reset, mouse wheel support) allow you to examine diagrams at any scale, from detailed close-ups to full-system overviews.
+
+• Production-Ready: Deploy with Docker and Docker Compose. Includes Graphviz system dependencies, health checks, and optimized for scalability with Nginx reverse proxy support.
+
+Use Cases:
+
+Auto-Diagram is perfect for:
+- Documenting microservice architectures
+- Planning cloud infrastructure layouts
+- Creating presentations and technical documentation
+- Rapidly prototyping system designs
+- Team communication and architecture reviews
+
+Why Auto-Diagram?
+
+Traditional diagramming tools require manual adjustments and lack code-driven flexibility. Auto-Diagram bridges this gap by offering a code-first approach with instant visual feedback—enabling faster iteration and clearer communication of complex systems.
+
+Whether you're an architect designing enterprise infrastructure or a developer sketching a new service topology, Auto-Diagram makes it fast, intuitive, and enjoyable.
+
+Get Started Today:
+
+Deploy locally with `docker-compose up -d` or run the development server. Visit http://localhost:8000 and start creating professional diagrams in minutes.
